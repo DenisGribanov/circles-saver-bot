@@ -1,0 +1,29 @@
+
+stages:          # List of stages for jobs, and their order of execution
+  - build
+  - deploy
+
+default:
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker info
+
+build-job:       # This job runs in the build stage, which runs first.
+  stage: build
+  script:
+    - echo "Commit id $CI_COMMIT_SHORT_SHA"
+    - echo "Build docker..."
+    - docker build -t circles_saver_bot:latest ./CirclesSaverBot
+
+deploy-job:      # This job runs in the deploy stage.
+  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
+  environment: production
+  script:
+    - echo "Stop old container"
+    - docker container stop circles_saver_bot
+    - echo "Remove old container"
+    - docker container rm circles_saver_bot
+    - echo "Run new docker container..."
+    - docker run  -v ~/CirclesSaverBotFiles:/app/files --name circles_saver_bot -d -p 8789:8080 circles_saver_bot:latest
